@@ -466,7 +466,7 @@ async function loadLicense() {
     } catch {
       // Fallback for local file:// testing
       const res = await fetch(
-        `https://raw.githubusercontent.com/${GITHUB_REPO}/master/license.md`,
+        `https://raw.githubusercontent.com/${GITHUB_REPO}/main/license.md`,
       );
       if (res.ok) md = await res.text();
     }
@@ -480,7 +480,7 @@ async function loadLicense() {
     console.warn('Failed to load license.md:', err);
     container.innerHTML = `
       <p class="status-state">
-        Ketentuan lisensi dapat dilihat di <a href="https://github.com/${GITHUB_REPO}/blob/master/license.md" target="_blank" rel="noopener">license.md</a>.
+        Ketentuan lisensi dapat dilihat di <a href="https://github.com/${GITHUB_REPO}/blob/main/license.md" target="_blank" rel="noopener">license.md</a>.
       </p>
     `;
   }
