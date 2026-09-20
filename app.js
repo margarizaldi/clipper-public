@@ -21,27 +21,12 @@ function detectUserOS() {
     ua.includes('macintosh') ||
     ua.includes('mac os x')
   ) {
-    // Check for Apple Silicon if possible via userAgentData or WebGL
-    return {
-      os: 'macos',
-      name: 'macOS',
-      arch:
-        ua.includes('arm') || navigator.userAgentData?.architecture === 'arm'
-          ? 'arm64'
-          : 'universal',
-    };
+    return { os: 'macos', name: 'macOS' };
   }
   if (platform.includes('win') || ua.includes('windows')) {
-    return { os: 'windows', name: 'Windows', arch: 'x64' };
+    return { os: 'windows', name: 'Windows' };
   }
-  if (
-    platform.includes('linux') ||
-    ua.includes('linux') ||
-    ua.includes('x11')
-  ) {
-    return { os: 'linux', name: 'Linux', arch: 'x64' };
-  }
-  return { os: 'unknown', name: 'Unknown', arch: 'unknown' };
+  return { os: 'unknown', name: 'Unknown' };
 }
 
 // Format bytes to human readable size
@@ -84,13 +69,8 @@ function parseMarkdown(md) {
 // Categorize release assets
 function categorizeAssets(assets = []) {
   const categorized = {
-    macArm: null,
-    macIntel: null,
     macUniversal: null,
     windowsExe: null,
-    windowsMsi: null,
-    linuxAppImage: null,
-    linuxDeb: null,
     others: [],
   };
 
@@ -102,34 +82,10 @@ function categorizeAssets(assets = []) {
       return;
     }
 
-    if (
-      name.endsWith('.dmg') ||
-      name.includes('darwin') ||
-      name.includes('macos') ||
-      (name.endsWith('.tar.gz') && name.includes('app'))
-    ) {
-      if (name.includes('aarch64') || name.includes('arm64')) {
-        categorized.macArm = asset;
-      } else if (
-        name.includes('x64') ||
-        name.includes('x86_64') ||
-        name.includes('intel')
-      ) {
-        categorized.macIntel = asset;
-      } else {
-        categorized.macUniversal = asset;
-      }
-    } else if (name.endsWith('.exe') || name.endsWith('.msi')) {
-      if (name.endsWith('.exe')) categorized.windowsExe = asset;
-      else if (name.endsWith('.msi')) categorized.windowsMsi = asset;
-    } else if (
-      name.endsWith('.appimage') ||
-      name.endsWith('.deb') ||
-      name.includes('linux')
-    ) {
-      if (name.endsWith('.appimage')) categorized.linuxAppImage = asset;
-      else if (name.endsWith('.deb')) categorized.linuxDeb = asset;
-      else categorized.others.push(asset);
+    if (name.endsWith('.dmg')) {
+      categorized.macUniversal = asset;
+    } else if (name.endsWith('.exe')) {
+      categorized.windowsExe = asset;
     } else {
       categorized.others.push(asset);
     }
@@ -143,102 +99,39 @@ function generateDownloadTableHTML(assets, userOS) {
   const cat = categorizeAssets(assets);
   const rows = [];
 
-  // 1. macOS Apple Silicon
-  if (cat.macArm) {
+  // 1. macOS (Universal)
+  if (cat.macUniversal) {
     const isRecommended = userOS.os === 'macos';
     rows.push(`
       <tr class="${isRecommended ? 'recommended-row' : ''}">
-        <td><div class="os-cell"><strong>macOS</strong> (Apple Silicon / M1/M2/M3/M4)</div></td>
-        <td><code>.dmg</code> installer</td>
-        <td class="file-size">${formatBytes(cat.macArm.size)}</td>
-        <td><a href="${cat.macArm.browser_download_url}" class="btn ${isRecommended ? 'btn-primary' : ''}">Unduh</a></td>
-      </tr>
-    `);
-  }
-
-  // 2. macOS Intel
-  if (cat.macIntel) {
-    const isRecommended = userOS.os === 'macos' && !cat.macArm;
-    rows.push(`
-      <tr class="${isRecommended ? 'recommended-row' : ''}">
-        <td><div class="os-cell"><strong>macOS</strong> (Intel x64)</div></td>
-        <td><code>.dmg</code> installer</td>
-        <td class="file-size">${formatBytes(cat.macIntel.size)}</td>
-        <td><a href="${cat.macIntel.browser_download_url}" class="btn ${isRecommended ? 'btn-primary' : ''}">Unduh</a></td>
-      </tr>
-    `);
-  }
-
-  // 2b. macOS Universal / Other
-  if (cat.macUniversal && !cat.macArm && !cat.macIntel) {
-    const isRecommended = userOS.os === 'macos';
-    rows.push(`
-      <tr class="${isRecommended ? 'recommended-row' : ''}">
-        <td><div class="os-cell"><strong>macOS</strong></div></td>
-        <td><code>${cat.macUniversal.name.split('.').pop()}</code></td>
+        <td><div class="os-cell"><strong>macOS</strong> (Universal)</div></td>
+        <td><code>.dmg</code></td>
         <td class="file-size">${formatBytes(cat.macUniversal.size)}</td>
         <td><a href="${cat.macUniversal.browser_download_url}" class="btn ${isRecommended ? 'btn-primary' : ''}">Unduh</a></td>
       </tr>
     `);
   }
 
-  // 3. Windows Installer (.exe)
+  // 2. Windows (.exe)
   if (cat.windowsExe) {
     const isRecommended = userOS.os === 'windows';
     rows.push(`
       <tr class="${isRecommended ? 'recommended-row' : ''}">
         <td><div class="os-cell"><strong>Windows</strong> (64-bit)</div></td>
-        <td><code>.exe</code> installer</td>
+        <td><code>.exe</code></td>
         <td class="file-size">${formatBytes(cat.windowsExe.size)}</td>
         <td><a href="${cat.windowsExe.browser_download_url}" class="btn ${isRecommended ? 'btn-primary' : ''}">Unduh</a></td>
       </tr>
     `);
   }
 
-  // 4. Windows MSI
-  if (cat.windowsMsi) {
-    rows.push(`
-      <tr>
-        <td><div class="os-cell"><strong>Windows</strong> (64-bit MSI)</div></td>
-        <td><code>.msi</code> package</td>
-        <td class="file-size">${formatBytes(cat.windowsMsi.size)}</td>
-        <td><a href="${cat.windowsMsi.browser_download_url}" class="btn">Unduh</a></td>
-      </tr>
-    `);
-  }
-
-  // 5. Linux AppImage
-  if (cat.linuxAppImage) {
-    const isRecommended = userOS.os === 'linux';
-    rows.push(`
-      <tr class="${isRecommended ? 'recommended-row' : ''}">
-        <td><div class="os-cell"><strong>Linux</strong> (x64)</div></td>
-        <td><code>.AppImage</code> standalone</td>
-        <td class="file-size">${formatBytes(cat.linuxAppImage.size)}</td>
-        <td><a href="${cat.linuxAppImage.browser_download_url}" class="btn ${isRecommended ? 'btn-primary' : ''}">Unduh</a></td>
-      </tr>
-    `);
-  }
-
-  // 6. Linux DEB
-  if (cat.linuxDeb) {
-    rows.push(`
-      <tr>
-        <td><div class="os-cell"><strong>Linux</strong> (Debian / Ubuntu)</div></td>
-        <td><code>.deb</code> package</td>
-        <td class="file-size">${formatBytes(cat.linuxDeb.size)}</td>
-        <td><a href="${cat.linuxDeb.browser_download_url}" class="btn">Unduh</a></td>
-      </tr>
-    `);
-  }
-
   // Fallback for any other listed asset
-  if (rows.length === 0 && assets.length > 0) {
-    assets.forEach((asset) => {
+  if (cat.others.length > 0) {
+    cat.others.forEach((asset) => {
       rows.push(`
         <tr>
           <td><div class="os-cell">${asset.name}</div></td>
-          <td>Paket Biner</td>
+          <td><code>${asset.name.split('.').pop()}</code></td>
           <td class="file-size">${formatBytes(asset.size)}</td>
           <td><a href="${asset.browser_download_url}" class="btn">Unduh</a></td>
         </tr>
@@ -257,15 +150,12 @@ function generateDownloadTableHTML(assets, userOS) {
 function getRecommendedAsset(assets, userOS) {
   const cat = categorizeAssets(assets);
   if (userOS.os === 'macos') {
-    return cat.macArm || cat.macUniversal || cat.macIntel;
+    return cat.macUniversal;
   }
   if (userOS.os === 'windows') {
-    return cat.windowsExe || cat.windowsMsi;
+    return cat.windowsExe;
   }
-  if (userOS.os === 'linux') {
-    return cat.linuxAppImage || cat.linuxDeb;
-  }
-  return cat.macArm || cat.windowsExe || cat.linuxAppImage;
+  return cat.macUniversal || cat.windowsExe;
 }
 
 // Render Latest Release Section
@@ -314,7 +204,7 @@ function renderLatestRelease(release, userOS) {
               <th>Platform</th>
               <th>Format</th>
               <th>Ukuran</th>
-              <th>Aksi</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -364,7 +254,7 @@ function renderPreviousReleases(releases, userOS) {
                   <th>Platform</th>
                   <th>Format</th>
                   <th>Ukuran</th>
-                  <th>Aksi</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
